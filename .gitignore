@@ -1,0 +1,61 @@
+# History files
+.Rhistory
+.Rapp.history
+
+# Session Data files
+.RData
+
+# User-specific files
+.Ruserdata
+
+# Example code in package build process
+*-Ex.R
+
+# Output files from R CMD build
+/*.tar.gz
+
+# Output files from R CMD check
+/*.Rcheck/
+
+# RStudio files
+.Rproj.user/
+.Rproj.user/*
+.Rproj.user/**
+
+# RStudio project files
+*.Rproj
+
+# Temporary files created by R
+*.Rout
+*.Rout.save
+*.RData
+*.Rhistory
+*.Ruserdata
+
+# Compiled shared objects (e.g., C, C++)
+*.so
+*.dll
+*.dylib
+
+# Compiled Python files
+*.pyc
+
+# Jupyter Notebook checkpoints
+.ipynb_checkpoints
+
+# Documentation files
+docs/
+
+# Data files
+data/
+# *.csv
+*.tsv
+*.xlsx
+*.xls
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.temp

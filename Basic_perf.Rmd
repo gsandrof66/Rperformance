@@ -1,0 +1,376 @@
+---
+title: "Basic_perf"
+date: 2025-01-01
+output: html_document
+---
+
+```{r setup, include = FALSE}
+options(warn = -1)
+suppressMessages({
+  library(data.table)
+  library(dplyr)
+  library(microbenchmark)
+  library(glue)
+  library(plotly)
+  library(tidyr)
+})
+source("./other_functions.R")
+
+```
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Cast dates
+```{r, echo = FALSE}
+start_date <- "2017-01-01"
+end_date <- "2019-12-31"
+f1<-function(d2, d1){
+  n_weeks <-  floor(as.numeric(difftime(d2, d1, units="weeks")))
+}
+f2<-function(d2, d1){
+  n_weeks <- floor(as.numeric(difftime(as.Date(d2)
+    , as.Date(d1), units = "weeks")))
+}
+m1<-microbenchmark(
+  Nocast = f1(end_date, start_date),
+  Cast = f2(end_date, start_date),
+  times = 1000
+)
+
+print(m1)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m1, "microseconds")
+fig
+```
+
+## Explicit vector length vector("type", length) is faster than an empty vector c()
+```{r, echo = FALSE}
+create_c <- function (n){
+  x <- c()
+  for (i in seq(n)) {
+    x <- c(x, i)
+  }
+}
+create_vector <- function (n){
+  x <- vector("integer", n)
+  for (i in seq(n)) {
+    x[i] <- i
+  }
+}
+m3 <- microbenchmark(
+  with_c = create_c(1e4),
+  with_vector = create_vector(1e4),
+  times = 10
+)
+print(m3)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m3, "microseconds")
+fig
+```
+
+
+## which function is slow for some simple situations
+```{r, echo = FALSE}
+vector <- runif(1e8)
+w1 <- function(x){
+  d <- length(which(x > .5))
+}
+w2 <- function(x){
+  d <- sum(x > .5)
+}
+m4 <- microbenchmark(
+  which = w1(vector),
+  nowhich = w2(vector),
+  times = 10
+)
+print(m4)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m4, "miliseconds")
+fig
+```
+
+## Column operation is faster than row operation
+```{r, echo = FALSE}
+n <- 1e4
+dt <- data.table(
+  a = seq(n), b = runif(n)
+)
+head(dt)
+```
+
+```{r, echo = FALSE}
+v1 <- function(dt){
+  d <- mean(dt[dt$b > .5, ]$a)
+}
+v2 <- function(dt){
+  d <- mean(dt$a[dt$b > .5])
+}
+m5 <- microbenchmark(
+  row_operation = v1(dt),
+  column_operation = v2(dt),
+  times = 10
+)
+print(m5)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m5, "microseconds")
+fig
+```
+
+## Sequences function safer than 1:n
+The function seq prevents when the second part of the 1:x is zero
+```{r, echo = FALSE}
+num <- 1e7
+s1 <- function(num){
+  d <- mean(1:num)
+}
+s2 <- function(num){
+  d <- mean(seq(num))
+}
+m6<-microbenchmark(
+  noseq = s1(num),
+  seq = s2(num),
+  times = 30
+)
+print(m6)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m6, "miliseconds")
+fig
+```
+
+## paste0 is faster than glue
+```{r, echo = FALSE}
+# lets use mydemo data.table object
+a1 <- function(x){
+  d <- x |> mutate(code = paste0(team, "_", points))
+}
+a2 <- function(x){
+  d <- x |> mutate(code = glue("{team}_{points}"))
+}
+m7 <- microbenchmark(
+  with_paste = a1(mydemo),
+  with_glue = a2(mydemo),
+  times = 20
+)
+print(m7)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m7, "miliseconds")
+fig
+```
+
+## for loop vs lapply
+```{r, echo = FALSE}
+# Example data
+data <- data.table(group = rep(seq(10), each = 100), value = rnorm(1000))
+print(table(data$group))
+# Using a for loop
+for_loop_function <- function(data) {
+  res <- list()
+  unique_groups <- unique(data$group)
+  for(this_group in unique_groups) {
+    res[[this_group]] <- data |> filter(group == this_group)
+  }
+  return(res)
+}
+sapply_function <- function(data){
+  unique_groups <- unique(data$group)
+  res <- list()
+  sapply(unique_groups, function(this_group){
+    res[[this_group]] <<- data |> filter(group == this_group)
+  })
+  return(res)
+}
+
+m8 <- microbenchmark(
+  for_loop = for_loop_function(data),
+  sapply = sapply_function(data),
+  times = 500
+)
+
+print(m8)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m8, "miliseconds")
+fig
+```
+
+## Date vs IDate
+```{r, echo = F}
+dt <- data.table(
+  Date = as.Date('2023-01-01') + 0:99999,
+  iDate = as.IDate('2023-01-01') + 0:99999,
+  Value = rnorm(100000)
+)
+glimpse(dt)
+```
+
+```{r, echo = FALSE}
+nd1 <- as.Date('2023-01-01')
+nd2 <- as.Date('2023-01-10')
+id1 <- as.Date('2023-01-01')
+id2 <- as.Date('2023-01-10')
+
+date_between_operation <- function(nd1, nd2) {
+  dt |> filter(Date >= nd1 & Date <= nd2)
+}
+idate_between_operation <- function(id1, id2) {
+  dt %>% .[data.table::between(iDate, id1, id2)]
+}
+
+m9 <- microbenchmark(
+  Date = date_between_operation(nd1, nd2),
+  iDate = idate_between_operation(id1, id2),
+  times = 200L
+)
+print(m9)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m9, "miliseconds")
+fig
+```
+
+## Base R switch vs Dplyr case_when (for simple tasks)
+```{r, echo = FALSE}
+switch_function <- function(x) {
+  switch(x,
+         "a" = "apple",
+         "b" = "banana",
+         "c" = "cherry",
+         "default")
+}
+case_when_function <- function(x) {
+  case_when(
+    x == "a" ~ "apple",
+    x == "b" ~ "banana",
+    x == "c" ~ "cherry",
+    TRUE ~ "default"
+  )
+}
+# Create a vector of test values
+test_values <- sample(c("a", "b", "c", "d"), 1000, replace = TRUE)
+m10 <- microbenchmark(
+  switch = sapply(test_values, switch_function),
+  case_when = sapply(test_values, case_when_function),
+  times = 200L
+)
+print(m10)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m10, "microseconds")
+fig
+```
+
+## data.table fcase vs Dplyr case_when
+```{r, echo = FALSE}
+set.seed(123)
+n <- 1e6
+data <- data.table(
+  id = seq(n),
+  value = sample(seq(100), n, replace = TRUE)
+)
+print(glue("Number of rows {nrow(data)}"))
+
+casewhenf <- function(data){
+  df <- data %>%
+    mutate(category = case_when(
+      value <= 20 ~ "Low",
+      value <= 70 ~ "Medium",
+      value > 70 ~ "High"))
+}
+fcasef <- function(data){
+  df <- data %>%
+    mutate(category = fcase(
+      value <= 20, "Low",
+      value <= 70, "Medium",
+      value > 70, "High"))
+}
+m11 <- microbenchmark(
+  case_when = casewhenf(data),
+  fcase = fcasef(data),
+  times = 20
+)
+print(m11)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m11, "miliseconds")
+fig
+```
+
+## data.table fcoalesce vs tidyr replace_na
+```{r, echo = FALSE}
+set.seed(123)
+DT <- data.table(
+  ID = 1:1e6,
+  Value1 = sample(c(NA, 1:100), 1e6, replace = TRUE),
+  Value2 = sample(c(NA, 101:200), 1e6, replace = TRUE)
+)
+print(glue("Number of rows {nrow(DT)}"))
+
+# Define the functions
+replace_na_f <- function(data){
+  DF <- data %>%
+    mutate(Value1 = replace_na(Value1, 0),
+           Value2 = replace_na(Value2, 0)) %>%
+    as.data.table()
+}
+fcoalesce_f <- function(data){
+  DF <- data %>%
+    mutate(Value1 = fcoalesce(Value1, 0L),
+           Value2 = fcoalesce(Value2, 0L))
+}
+m12 <- microbenchmark(
+  treplace_na = replace_na_f(DT),
+  tfcoalesce = fcoalesce_f(DT),
+  times = 20
+)
+print(m12)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m12, "miliseconds")
+fig
+```
+
+## data.table notation vs dplyr notation
+```{r, echo = FALSE}
+dt <- data.table(field_name = c("argentina.blue.man.watch", 
+                                "brazil.red.woman.shoes", 
+                                "canada.green.kid.hat", 
+                                "denmark.red.man.shirt"))
+
+# Filter rows where 'field_name' does not contain 'red'
+dtnot <- function(data){
+  filtered_dt <- data %>% .[!grepl("red", field_name)]
+}
+dplyrnot <- function(data){
+  filtered_dt <- data %>% filter(!grepl("red", field_name))
+}
+
+m13 <- microbenchmark(
+  tdtnot = dtnot(dt),
+  tdplyrnot = dplyrnot(dt),
+  times = 100
+)
+print(m13)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m13, "microseconds")
+fig
+```
