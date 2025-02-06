@@ -15,8 +15,8 @@ suppressMessages({
   library(tidyr)
 })
 source("./other_functions.R")
-
 ```
+
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
@@ -102,10 +102,6 @@ n <- 1e4
 dt <- data.table(
   a = seq(n), b = runif(n)
 )
-head(dt)
-```
-
-```{r, echo = FALSE}
 v1 <- function(dt){
   d <- mean(dt[dt$b > .5, ]$a)
 }
@@ -150,16 +146,19 @@ fig
 
 ## paste0 is faster than glue
 ```{r, echo = FALSE}
-# lets use mydemo data.table object
+large_dataset <- data.table(
+  id = 1:1000000,
+  value = sample(letters, 1000000, replace = TRUE)
+)
 a1 <- function(x){
-  d <- x |> mutate(code = paste0(team, "_", points))
+  d <- x %>% mutate(code = paste0(id, "_", value))
 }
 a2 <- function(x){
-  d <- x |> mutate(code = glue("{team}_{points}"))
+  d <- x %>% mutate(code = glue("{id}_{value}"))
 }
 m7 <- microbenchmark(
-  with_paste = a1(mydemo),
-  with_glue = a2(mydemo),
+  with_paste = a1(large_dataset),
+  with_glue = a2(large_dataset),
   times = 20
 )
 print(m7)
@@ -180,7 +179,7 @@ for_loop_function <- function(data) {
   res <- list()
   unique_groups <- unique(data$group)
   for(this_group in unique_groups) {
-    res[[this_group]] <- data |> filter(group == this_group)
+    res[[this_group]] <- data %>% filter(group == this_group)
   }
   return(res)
 }
@@ -188,7 +187,7 @@ sapply_function <- function(data){
   unique_groups <- unique(data$group)
   res <- list()
   sapply(unique_groups, function(this_group){
-    res[[this_group]] <<- data |> filter(group == this_group)
+    res[[this_group]] <<- data %>% filter(group == this_group)
   })
   return(res)
 }
@@ -214,17 +213,14 @@ dt <- data.table(
   iDate = as.IDate('2023-01-01') + 0:99999,
   Value = rnorm(100000)
 )
-glimpse(dt)
-```
 
-```{r, echo = FALSE}
 nd1 <- as.Date('2023-01-01')
 nd2 <- as.Date('2023-01-10')
 id1 <- as.Date('2023-01-01')
 id2 <- as.Date('2023-01-10')
 
 date_between_operation <- function(nd1, nd2) {
-  dt |> filter(Date >= nd1 & Date <= nd2)
+  dt %>% filter(Date >= nd1 & Date <= nd2)
 }
 idate_between_operation <- function(id1, id2) {
   dt %>% .[data.table::between(iDate, id1, id2)]
@@ -372,5 +368,34 @@ print(m13)
 
 ```{r, warning = FALSE}
 fig <- fbox_plot(m13, "microseconds")
+fig
+```
+
+## data.table melt vs tidyr pivot_longer
+```{r, echo = FALSE}
+large_data <- data.table(
+  id = 1:100000,
+  var1 = rnorm(100000),
+  var2 = rnorm(100000),
+  var3 = rnorm(100000),
+  var4 = rnorm(100000)
+)
+# Benchmarking
+m14 <- microbenchmark(
+  tidyr_pivot_longer = {
+    long_data_tidyr <- pivot_longer(large_data, cols = starts_with("var"), names_to = "variable", values_to =
+                                      "value")
+  },
+  data_table_melt = {
+    long_data_dt <- melt(large_data, id.vars = "id", variable.name = "variable", value.name = "value")
+  },
+  times = 10
+)
+
+print(m14)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m14, "microseconds")
 fig
 ```
