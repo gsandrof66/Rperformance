@@ -83,6 +83,7 @@ w1 <- function(x){
 w2 <- function(x){
   d <- sum(x > .5)
 }
+
 m4 <- microbenchmark(
   which = w1(vector),
   nowhich = w2(vector),
@@ -216,8 +217,8 @@ dt <- data.table(
 
 nd1 <- as.Date('2023-01-01')
 nd2 <- as.Date('2023-01-10')
-id1 <- as.Date('2023-01-01')
-id2 <- as.Date('2023-01-10')
+id1 <- as.IDate('2023-01-01')
+id2 <- as.IDate('2023-01-10')
 
 date_between_operation <- function(nd1, nd2) {
   dt %>% filter(Date >= nd1 & Date <= nd2)
@@ -279,7 +280,6 @@ data <- data.table(
   id = seq(n),
   value = sample(seq(100), n, replace = TRUE)
 )
-print(glue("Number of rows {nrow(data)}"))
 
 casewhenf <- function(data){
   df <- data %>%
@@ -316,7 +316,6 @@ DT <- data.table(
   Value1 = sample(c(NA, 1:100), 1e6, replace = TRUE),
   Value2 = sample(c(NA, 101:200), 1e6, replace = TRUE)
 )
-print(glue("Number of rows {nrow(DT)}"))
 
 # Define the functions
 replace_na_f <- function(data){
@@ -383,11 +382,12 @@ large_data <- data.table(
 # Benchmarking
 m14 <- microbenchmark(
   tidyr_pivot_longer = {
-    long_data_tidyr <- pivot_longer(large_data, cols = starts_with("var"), names_to = "variable", values_to =
-                                      "value")
+    long_data_tidyr <- pivot_longer(large_data, cols = starts_with("var"), 
+                                    names_to = "variable", values_to = "value")
   },
   data_table_melt = {
-    long_data_dt <- melt(large_data, id.vars = "id", variable.name = "variable", value.name = "value")
+    long_data_dt <- melt(large_data, id.vars = "id", variable.name = "variable", 
+                         value.name = "value")
   },
   times = 10
 )
