@@ -351,7 +351,7 @@ dt <- data.table(field_name = c("argentina.blue.man.watch",
 
 # Filter rows where 'field_name' does not contain 'red'
 dtnot <- function(data){
-  filtered_dt <- data %>% .[!grepl("red", field_name)]
+  filtered_dt <- data |> _[!grepl("red", field_name)]
 }
 dplyrnot <- function(data){
   filtered_dt <- data %>% filter(!grepl("red", field_name))
