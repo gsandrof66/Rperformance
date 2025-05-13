@@ -1,7 +1,13 @@
 ---
 title: "Basic_perf"
 date: 2025-01-01
-output: html_document
+output: 
+  html_document:
+    theme: 
+      # version: 4
+      # bootswatch: darkly
+      version: 5
+      bootswatch: vapor
 ---
 
 ```{r setup, include = FALSE}
@@ -13,16 +19,17 @@ suppressMessages({
   library(glue)
   library(plotly)
   library(tidyr)
+  library(bslib)
 })
-source("./other_functions.R")
-```
 
-```{r setup, include=FALSE}
+source("./other_functions.R")
+
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Cast dates
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 start_date <- "2017-01-01"
 end_date <- "2019-12-31"
 f1<-function(d2, d1){
@@ -47,7 +54,8 @@ fig
 ```
 
 ## Explicit vector length vector("type", length) is faster than an empty vector c()
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 create_c <- function (n){
   x <- c()
   for (i in seq(n)) {
@@ -73,9 +81,9 @@ fig <- fbox_plot(m3, "microseconds")
 fig
 ```
 
-
 ## which function is slow for some simple situations
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 vector <- runif(1e8)
 w1 <- function(x){
   d <- length(which(x > .5))
@@ -98,7 +106,8 @@ fig
 ```
 
 ## Column operation is faster than row operation
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 n <- 1e4
 dt <- data.table(
   a = seq(n), b = runif(n)
@@ -123,8 +132,10 @@ fig
 ```
 
 ## Sequences function safer than 1:n
+
 The function seq prevents when the second part of the 1:x is zero
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 num <- 1e7
 s1 <- function(num){
   d <- mean(1:num)
@@ -146,7 +157,8 @@ fig
 ```
 
 ## paste0 is faster than glue
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 large_dataset <- data.table(
   id = 1:1000000,
   value = sample(letters, 1000000, replace = TRUE)
@@ -171,7 +183,8 @@ fig
 ```
 
 ## for loop vs lapply
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 # Example data
 data <- data.table(group = rep(seq(10), each = 100), value = rnorm(1000))
 print(table(data$group))
@@ -208,6 +221,7 @@ fig
 ```
 
 ## Date vs IDate
+
 ```{r, echo = F}
 dt <- data.table(
   Date = as.Date('2023-01-01') + 0:99999,
@@ -241,7 +255,8 @@ fig
 ```
 
 ## Base R switch vs Dplyr case_when (for simple tasks)
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 switch_function <- function(x) {
   switch(x,
          "a" = "apple",
@@ -273,7 +288,8 @@ fig
 ```
 
 ## data.table fcase vs Dplyr case_when
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 set.seed(123)
 n <- 1e6
 data <- data.table(
@@ -309,7 +325,8 @@ fig
 ```
 
 ## data.table fcoalesce vs tidyr replace_na
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 set.seed(123)
 DT <- data.table(
   ID = 1:1e6,
@@ -343,7 +360,8 @@ fig
 ```
 
 ## data.table notation vs dplyr notation
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 dt <- data.table(field_name = c("argentina.blue.man.watch", 
                                 "brazil.red.woman.shoes", 
                                 "canada.green.kid.hat", 
@@ -371,7 +389,8 @@ fig
 ```
 
 ## data.table melt vs tidyr pivot_longer
-```{r, echo = FALSE}
+
+```{r, echo = TRUE}
 large_data <- data.table(
   id = 1:100000,
   var1 = rnorm(100000),
