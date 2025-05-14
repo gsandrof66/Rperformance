@@ -1,6 +1,6 @@
 ---
 title: "Basic_perf"
-date: 2025-01-01
+date: 2025-05-14
 output: 
   html_document:
     theme: 
@@ -416,5 +416,33 @@ print(m14)
 
 ```{r, warning = FALSE}
 fig <- fbox_plot(m14, "microseconds")
+fig
+```
+
+```{r, echo = TRUE}
+vec1 <- seq(1000)
+vec2 <- seq(1000)
+
+# Define functions to be benchmarked
+expand_grid_func <- function() {
+  return(expand_grid(vec1, vec2))
+}
+
+CJ_func <- function() {
+  return(CJ(vec1, vec2))
+}
+
+# Perform benchmarking
+m15 <- microbenchmark(
+  expand_grid = expand_grid_func(),
+  CJ = CJ_func(),
+  times = 10
+)
+
+print(m15)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m15, "microseconds")
 fig
 ```
