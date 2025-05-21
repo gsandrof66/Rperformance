@@ -1,26 +1,26 @@
 # function to calculate reduction
 calcpecentage <- function(micro){
-  v <- aggregate(time ~ expr, micro, mean)
+  v <- aggregate(time ~ expr, micro, mean) |>
+    arrange(time)
+
   i <- 1
-  j <- 2
-  if(v$time[i] < v$time[j]){
-    i <- 2
-    j <- 1
-  }
-  reduction <- ((v$time[i] - v$time[j])*100)/v$time[i]
+  j <- nrow(v)
+
+  reduction <- ((v$time[j] - v$time[i])*100)/v$time[j]
   reduction <- reduction |> round(digits = 2)
-  return(glue("{reduction} % reduction using {v$expr[j]}"))
+
+  return(glue("{reduction}% reduction using {v$expr[i]} compared to {v$expr[j]}"))
 }
 
 fbox_plot <- function(data, my_scale){
   data <- as.data.table(data)
-  my_fig <- plot_ly(data, x = ~log(time), y = ~expr, type = "box", 
-                 orientation = "h", color = ~expr) |> 
+  my_fig <- plot_ly(data, x = ~log(time), y = ~expr, type = "box",
+                 orientation = "h", color = ~expr) |>
     layout(
-      title = paste0("Microbenchmark Results ", calcpecentage(data)),
+      title = calcpecentage(data),
       xaxis = list(title = paste0("Time in ", my_scale)),
       yaxis = list(title = "Expression"),
-      plot_bgcolor = 'black', 
+      plot_bgcolor = 'black',
       paper_bgcolor = 'black',
       font = list(color = 'white')
     )

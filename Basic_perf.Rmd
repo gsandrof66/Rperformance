@@ -1,6 +1,6 @@
 ---
 title: "Basic_perf"
-date: 2025-05-14
+date: 2025-05-21
 output: 
   html_document:
     theme: 
@@ -20,12 +20,16 @@ suppressMessages({
   library(plotly)
   library(tidyr)
   library(bslib)
+  library(parallelly)
+  library(parallel)
+  library(stringr)
 })
 
 source("./other_functions.R")
-
+setDTthreads(threads = 4)
 knitr::opts_chunk$set(echo = TRUE)
 ```
+# Basic R
 
 ## Cast dates
 
@@ -219,6 +223,8 @@ print(m8)
 fig <- fbox_plot(m8, "miliseconds")
 fig
 ```
+
+# data.table package functions
 
 ## Date vs IDate
 
@@ -419,6 +425,8 @@ fig <- fbox_plot(m14, "microseconds")
 fig
 ```
 
+## data.table CJ vs tidyr expand_grid
+
 ```{r, echo = TRUE}
 vec1 <- seq(1000)
 vec2 <- seq(1000)
@@ -444,5 +452,130 @@ print(m15)
 
 ```{r, warning = FALSE}
 fig <- fbox_plot(m15, "microseconds")
+fig
+```
+
+## data.table rbindlist vs R rbind
+
+```{r, echo = TRUE}
+# Sample data
+size = 1e4
+set.seed(44)
+df_list <- replicate(50, data.table(id = sample(seq(size), size, replace = T),
+                                    value = rnorm(size)), simplify = F)
+
+simple_bind <- function(list_of_dfs){
+  do.call(rbind, list_of_dfs)
+}
+
+dplyr_bind <- function(list_of_dfs){
+  bind_rows(list_of_dfs)
+}
+
+dt_bind <- function(list_of_dfs){
+  rbindlist(list_of_dfs, fill = F)
+}
+
+# Benchmark both methods
+m16 <- microbenchmark(
+  dt_ver = dt_bind(df_list),
+  simple = simple_bind(df_list),
+  dplyr_ver = dplyr_bind(df_list),
+  times = 30
+)
+
+print(m16)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m16, "microseconds")
+fig
+```
+
+## stringr word vs tidyr separate vs data.table tstrsplit
+
+```{r, echo = TRUE}
+set.seed(123)
+n <- 1e4
+df <- data.table(text = paste("word1", "word2", "word3", "word4", "word5", sep = "."), stringsAsFactors = F)
+df <- df[rep(1, n), , drop = F]
+
+# Using tidyr::separate
+separate_words <- function() {
+  df |> 
+    separate(text, into = c("w1", "w2", "w3", "w4", "w5"), sep = "\\.", remove = F) |> 
+    select(-c(w1, w2, w4))
+}
+
+# Using stringr::word
+stringr_words <- function() {
+  df |> 
+    mutate(
+      w3 = word(text, 3, sep = fixed(".")),
+      w5 = word(text, 5, sep = fixed("."))
+    )
+}
+
+datatable_words <- function() {
+  df |> 
+    _[, c("w3", "w5") := tstrsplit(text, "\\.")[c(3, 5)]]
+}
+
+m17 <- microbenchmark(
+  separate = separate_words(),
+  stringr = stringr_words(),
+  dt = datatable_words(),
+  times = 10
+)
+
+print(m17)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m17, "miliseconds")
+fig
+```
+
+# Parallel processing
+
+## lapply vs parallel mclapply
+
+```{r, echo = TRUE}
+# Sample data
+size = 1e4
+n_cores = parallelly::availableCores()
+set.seed(123)
+
+df_list <- replicate(100, data.table(id = sample(seq(size), size, replace = T),
+                                    value = rnorm(size)), simplify = F)
+extra_df <- data.table(id = sample(seq(size), size, replace = T), 
+                       extra_value = runif(size))
+
+# Sequential join
+sequential_join <- function() {
+  lapply(df_list, function(df) {
+    merge(df, extra_df, by = "id", allow.cartesian = T)
+  })
+}
+
+# Parallel join using mclapply
+parallel_join <- function() {
+  mclapply(df_list, function(df) {
+    merge(df, extra_df, by = "id", allow.cartesian = T)
+  }, mc.cores = n_cores, mc.silent = T, mc.cleanup = T)
+}
+
+# Benchmark both methods
+m18 <- microbenchmark(
+  sequential = sequential_join(),
+  parallel = parallel_join(),
+  times = 10
+)
+
+print(m18)
+```
+
+```{r, warning = FALSE}
+fig <- fbox_plot(m18, "miliseconds")
 fig
 ```
