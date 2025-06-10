@@ -13,4 +13,5 @@ install.packages("microbenchmark")
 install.packages("glue")
 install.packages("plotly")
 install.packages("tidyr")
+install.packages("duckdb")
 ```
