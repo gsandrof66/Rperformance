@@ -15,6 +15,7 @@ output:
 suppressMessages({
   library(data.table)
   library(dplyr)
+  library(dtplyr)
   library(microbenchmark)
   library(glue)
   library(plotly)
@@ -575,6 +576,53 @@ print(m19)
 ```{r, warning = FALSE}
 fbox_plot(m19, "miliseconds")
 ```
+# dtplyr
+This is another alternative (You need to install this package)
+
+```{r, echo = TRUE}
+set.seed(123)
+n <- 1e7
+df <- data.table(
+  group1 = sample(LETTERS[1:10], n, replace = TRUE),
+  group2 = sample(letters[1:5], n, replace = TRUE),
+  value1 = rnorm(n),
+  value2 = runif(n, 1, 100)
+)
+
+m21 <- microbenchmark(
+  basic_way = {
+    dplyr <- df |> 
+      filter(value1 > 0) |> 
+      mutate(ratio = value1 / value2) |> 
+      summarize(
+        mean_val1 = mean(value1),
+        sd_val1 = sd(value1),
+        median_val2 = median(value2),
+        max_ratio = max(ratio), .by = c("group1", "group2")) |> 
+      as.data.table()
+  },
+  dtplyr_way = {
+    dtplyr = df |> 
+      lazy_dt() |> 
+      filter(value1 > 0) |> 
+      mutate(ratio = value1 / value2) |> 
+      summarize(
+        mean_val1 = mean(value1),
+        sd_val1 = sd(value1),
+        median_val2 = median(value2),
+        max_ratio = max(ratio), .by = c("group1", "group2")) |> 
+      as.data.table()
+  },
+  times = 5
+)
+
+print(m21)
+```
+
+```{r, warning = FALSE}
+fbox_plot(m21, "miliseconds")
+```
+
 # Duckdb
 ## Dockdb files vs parquet
 
@@ -647,15 +695,15 @@ with_duckfile <- function(){
   file.remove("./gd_inprogress.duckdb")
 }
 
-m21 <- microbenchmark(
+m22 <- microbenchmark(
   with_parquet = with_parquet(),
   with_duckfile = with_duckfile(),
   times = 3
 )
 
-print(m21)
+print(m22)
 ```
 
 ```{r, warning = FALSE}
-fbox_plot(m21, "miliseconds")
+fbox_plot(m22, "miliseconds")
 ```
