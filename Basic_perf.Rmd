@@ -351,13 +351,17 @@ dt <- data.table(field_name = c("argentina.blue.man.watch",
 dtnot <- function(data){
   filtered_dt <- data |> _[!grepl("red", field_name)]
 }
+anonymousnot <- function(data){
+  filtered_dt <- data |> (\(dt) dt[!grepl("red", dt$field_name), ])()
+}
 dplyrnot <- function(data){
   filtered_dt <- data |> filter(!grepl("red", field_name))
 }
 
 m13 <- microbenchmark(
+  anonymous_not = anonymousnot(dt),
   data_table_not = dtnot(dt),
-  dplyrnot = dplyrnot(dt),
+  dplyr_not = dplyrnot(dt),
   times = 100
 )
 print(m13)
