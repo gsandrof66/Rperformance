@@ -15,3 +15,7 @@ install.packages("plotly")
 install.packages("tidyr")
 install.packages("duckdb")
 ```
+
+You can see the generated html here: [Exported results in html](https://gsandrof66.github.io/Rperformance/Basic_perf.html) 
+
+
