@@ -1,5 +1,5 @@
 ---
-title: "Performance in R using microbenchmark"
+title: "Performance in R 4.5.1 using microbenchmark"
 date: "`r format(Sys.Date(), '%B %d, %Y')`"
 output: 
   html_document:
@@ -629,14 +629,17 @@ fbox_plot(m21, "miliseconds")
 
 # Duckdb
 ## Dockdb files vs parquet
+Parquet files may take longer if you partitioned by day. Consider to try partitioning by year or try to use duckdb. Another advantage using duckdb is memory consumption since you can wrangle using SQL statement.
 
+Note: DuckDB requires to open a connection, consider the parameter read_only if you only want to get data. Don't forget to close the connection.
 ```{r, warning = FALSE}
-with_parquet <- function(){
-  fp_data <- "/conf/posit_azure_logs/data"
-  
-  data_1 <- open_dataset(file.path(glue::glue("{fp_data}/golden_data_in_progress"))) |>
+# partitioned_by_day <- "/conf/posit_azure_logs/data/merge_uip_data_test"
+partitioned_by_year <- "/conf/posit_azure_logs/test_290825/data/merge_uip_data_test"
+my_duckdb <- "/conf/posit_azure_logs/test_290825/data/my_db.duckdb"
+
+with_parquet <- function(folder_path){
+  data_1 <- open_dataset(file.path(folder_path)) |>
     select(
-      date, hours, time,
       ALL_WIP_CP_day_session, ALL_WIP_CP_night_session,
       ALL_WIP_BP_day_session, ALL_WIP_BP_night_session,
       ALL_WIP_CP_DS_mem_limit, ALL_WIP_CP_NS_mem_limit,
@@ -660,16 +663,16 @@ with_parquet <- function(){
       average_session_per_node = ifelse(ALL_WIP_node_total != 0,
                                          (ALL_WIP_day_session + ALL_WIP_night_session) / ALL_WIP_node_total, 0)
     ) |>
+    arrange(ALL_WIP_CP_day_session, ALL_WIP_CP_night_session, ALL_WIP_BP_day_session) |> 
     collect() |>
     as.data.table()
 }
 
-with_duckfile <- function(){
-  file.copy("/conf/posit_azure_logs/gatzos01/gd_inprogress.duckdb", "gd_inprogress.duckdb")
-  
+with_duckfile <- function(my_path){
+  my_connection = dbConnect(duckdb::duckdb(), dbdir = my_path, read_only=TRUE)
   data_2 <- res_duckdb_sql <- dbGetQuery(
-    conn = dbConnect(duckdb::duckdb(), dbdir = "./gd_inprogress.duckdb"),
-    statement = glue("select date, hours, time,
+    my_connection,
+    statement = "select
         ALL_WIP_CP_day_session, ALL_WIP_CP_night_session,
         ALL_WIP_BP_day_session, ALL_WIP_BP_night_session,
         ALL_WIP_CP_DS_mem_limit, ALL_WIP_CP_NS_mem_limit,
@@ -692,17 +695,17 @@ with_duckfile <- function(){
           WHEN ALL_WIP_node_total != 0 THEN (ALL_WIP_day_session + ALL_WIP_night_session) / ALL_WIP_node_total
           ELSE 0
         END AS average_session_per_node
-      from gdinprog"),
+      from mytable order by ALL_WIP_CP_day_session, ALL_WIP_CP_night_session, ALL_WIP_BP_day_session",
     immediate = TRUE) |> 
     as.data.table()
   
-  file.remove("./gd_inprogress.duckdb")
+  dbDisconnect(my_connection, shutdown = TRUE)
 }
 
 m22 <- microbenchmark(
-  with_parquet = with_parquet(),
-  with_duckfile = with_duckfile(),
-  times = 3
+  duckdb_file = with_duckfile(my_duckdb),
+  parquet_by_year = with_parquet(partitioned_by_year),
+  times = 2
 )
 
 print(m22)
